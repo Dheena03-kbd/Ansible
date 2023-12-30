@@ -24,8 +24,7 @@
     - name: Extract the Tomcat
       ansible.builtin.unarchive:
         src: "/tmp/{{tomcatversion}}.tar.gz"
-        dest: "/tmp/"
-        remote_src: yes
+        dest: "/tmp/{{tomcatversion}}"
       become: yes
       
     - name: Add the user tomcat
@@ -36,7 +35,7 @@
 
     - name: Copy the tomcat
       copy:
-        src: "/tmp/apache-tomcat-9.0.75"
+        src: "/tmp/{{tomcatversion}}"
         dest: "/usr/local/tomcat"    
 
     - name: Set Tomcat Environment Variables

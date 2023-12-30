@@ -1,4 +1,4 @@
-  vars:
+
     tomcaturl: "https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.75/bin/apache-tomcat-9.0.75.tar.gz"
     tomcatversion: apache-tomcat-9.0.75
     project_repo_url: "https://github.com/hkhcoder/vprofile-project.git"
