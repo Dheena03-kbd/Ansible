@@ -50,6 +50,9 @@
       template:
         src: "/dev/null"
         dest: "/etc/systemd/system/tomcat.service"
+      notify: Restart Tomcat
+
+    - name: configure sytemd service  
       lineinfile:
         path: "/etc/systemd/system/tomcat.service"
         line: |
@@ -69,7 +72,7 @@
           Install]
           WantedBy=multi-user.target
 
-      notify: Restart Tomcat
+      
 
     - name: Reload systemd files
       systemd:
