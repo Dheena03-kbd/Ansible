@@ -25,7 +25,8 @@
       ansible.builtin.unarchive:
         src: "/tmp/{{tomcatversion}}.tar.gz"
         dest: "/tmp/{{tomcatversion}}"
-      become: yes
+        remote_src: yes
+      
       
     - name: Add the user tomcat
       user:
