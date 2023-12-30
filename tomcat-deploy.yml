@@ -1,0 +1,143 @@
+# tomcat_setup.yml
+
+---
+- name: Tomcat Installation
+  hosts: tomcat_servers
+  become: yes
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Update apt cache 
+      apt:
+        update_cache: yes
+
+    - name: Install Java
+      apt:
+        name: openjdk-11-jdk  
+
+    - name: Download Tomcat
+      get_url:
+        url: "{{tomcaturl}}"
+        dest: "/tmp/{{tomcatversion}}.tar.gz"
+
+    - name: Extract the Tomcat
+      ansible.builtin.unarchive:
+        src: "/tmp/{{tomcatversion}}.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      become: yes
+      
+    - name: Add the user tomcat
+      user:
+        name: tomcat
+        shell: /sbin/nologin
+        home: /usr/local/tomcat
+
+    - name: Copy the tomcat
+      copy:
+        src: "/tmp/apache-tomcat-9.0.75"
+        dest: "/usr/local/tomcat"    
+
+    - name: Set Tomcat Environment Variables
+      lineinfile:
+        path: "/etc/environment"
+        line: 'CATALINA_HOME="/usr/local/tomcat"'
+      become: yes
+
+    - name: Create Tomcat systemd Service
+      template:
+        src: "/dev/null"
+        dest: "/etc/systemd/system/tomcat.service"
+      lineinfile:
+        path: "/etc/systemd/system/tomcat.service"
+        line: |
+          [Unit]
+          Description=Tomcat
+          After=network.target
+          [Service]
+          User=tomcat
+          WorkingDirectory=/usr/local/tomcat
+          Environment=JRE_HOME=/usr/lib/jvm/jre
+          Environment=JAVA_HOME=/usr/lib/jvm/jre
+          Environment=CATALINA_HOME=/usr/local/tomcat
+          Environment=CATALINE_BASE=/usr/local/tomcat
+          ExecStart=/usr/local/tomcat/bin/catalina.sh run
+          ExecStop=/usr/local/tomcat/bin/shutdown.sh
+          SyslogIdentifier=tomcat-%i
+          Install]
+          WantedBy=multi-user.target
+
+      notify: Restart Tomcat
+
+    - name: Reload systemd files
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and enable Tomcat service
+      systemd:
+        name: tomcat
+        state: started
+        enabled: yes
+
+    - name: Start and enable firewalld service
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Add port 8080 to firewalld
+      firewalld:
+        zone: public
+        port: 8080/tcp
+        permanent: yes
+        state: enabled
+
+  handlers:
+    - name: Restart Tomcat
+      systemd:
+        name: tomcat
+        state: restarted
+    
+    - name: Clone the Git repository
+      git:
+        repo: "{{ project_repo_url }}"
+        dest: "{{ project_directory }}"
+        version: "{{ project_branch }}"
+        clone: yes
+
+    - name: Build code with Maven
+      command: "mvn install"
+      args:
+        chdir: "{{ project_directory }}"
+
+    - name: Deploy artifact to Tomcat
+      block:
+        - name: Stop Tomcat service
+          systemd:
+            name: "tomcat"
+            state: stopped
+
+        - name: Remove existing Tomcat webapps
+          command: "rm -rf /usr/local/tomcat/webapps/ROOT*"
+          become: yes
+
+        - name: Copy artifact to Tomcat webapps
+          command: "cp {{ project_directory }}/target/vprofile-v2.war /usr/local/tomcat/webapps/ROOT.war"
+          become: yes
+
+        - name: Start Tomcat service
+          systemd:
+            name: "tomcat"
+            state: started
+
+        - name: Set ownership for Tomcat webapps directory
+          command: "chown tomcat:tomcat /usr/local/tomcat/webapps -R"
+          become: yes
+
+        - name: Restart Tomcat service
+          systemd:
+            name: "tomcat"
+            state: restarted
+      become: yes
