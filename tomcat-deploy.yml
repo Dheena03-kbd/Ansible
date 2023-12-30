@@ -24,7 +24,7 @@
 
     - name: Extract the Tomcat
       ansible.builtin.unarchive:
-        src: "/tmp/{{tomcatversion}}.gz"
+        src: "/tmp/{{tomcatversion}}.tar.gz"
         dest: "/tmp/"
         remote_src: yes
       become: yes
